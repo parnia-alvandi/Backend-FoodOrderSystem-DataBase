@@ -11,7 +11,7 @@
 
     <nav class="mb-4 d-flex gap-2 align-items-center">
         <a href="{{ route('home') }}" class="btn btn-outline-primary">خانه</a>
-        <a href="{{ route('menus.index') }}" class="btn btn-outline-primary">منو</a>
+        <a href="{{ route('menu.index') }}" class="btn btn-outline-primary">منو</a>
 
         <div class="ms-auto">
             @if(auth()->check())

@@ -14,7 +14,7 @@
                         <p class="card-text"><strong>قیمت:</strong> {{ $menu->price }} تومان</p>
                         <p class="card-text"><strong>تعداد کامنت‌ها:</strong> {{ $menu->comments_count }}</p>
                         <p class="card-text"><strong>تعداد نظرسنجی‌ها:</strong> {{ $menu->surveys_count }}</p>
-                        <a href="{{ route('menus.show', $menu->id) }}" class="btn btn-primary">مشاهده جزئیات</a>
+                        <a href="{{ route('menu.show', $menu->id) }}" class="btn btn-primary">مشاهده جزئیات</a>
                     </div>
                 </div>
             </div>
