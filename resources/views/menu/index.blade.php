@@ -12,25 +12,19 @@
                         <h5 class="card-title">{{ $menu->name }}</h5>
                         <p class="card-text">{{ $menu->description }}</p>
                         <p class="card-text"><strong>قیمت:</strong> {{ number_format($menu->price) }} تومان</p>
-
-                        @if(!empty($menu->discount) && $menu->discount > 0)
-                            <p class="card-text text-danger">
-                                <strong>تخفیف:</strong> {{ $menu->discount }}%
-                            </p>
-                        @endif
-
                         <p class="card-text"><strong>کامنت‌ها:</strong> {{ $menu->comments_count }}</p>
                         <p class="card-text"><strong>نظرسنجی‌ها:</strong> {{ $menu->surveys_count }}</p>
 
-                        <a href="{{ route('menu.show', $menu->id) }}" class="btn btn-primary">مشاهده جزئیات</a>
-
-                        @auth
-                            <form action="{{ route('order.place') }}" method="POST" class="d-inline">
-                                @csrf
-                                <input type="hidden" name="menu_id" value="{{ $menu->id }}">
-                                <button type="submit" class="btn btn-success">سفارش سریع</button>
-                            </form>
-                        @endauth
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('menu.show', $menu->id) }}" class="btn btn-outline-secondary">جزئیات</a>
+                            @auth
+                                <a href="{{ route('order.checkout', ['menu_id' => $menu->id]) }}" class="btn btn-primary">
+                                    سفارش سریع
+                                </a>
+                            @else
+                                <a href="{{ route('login') }}" class="btn btn-primary">سفارش سریع</a>
+                            @endauth
+                        </div>
                     </div>
                 </div>
             </div>

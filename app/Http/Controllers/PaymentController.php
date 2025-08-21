@@ -2,46 +2,40 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
-use App\Models\PaymentHistory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\Order;
 
 class PaymentController extends Controller
 {
-    public function pay(Request $request, Order $order)
+    /**
+     * پردازش پرداخت سفارش
+     */
+    public function process($order_id)
     {
-        // فقط صاحب سفارش یا ادمین
-        if ($request->user()->role !== 'admin' && $order->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $order = Order::findOrFail($order_id);
 
-        if ($order->status !== 'pending') {
-            return response()->json(['message'=>'Order is not payable'], 422);
-        }
+        // 🔹 اینجا می‌تونی اتصال به درگاه واقعی رو شبیه‌سازی یا پیاده‌سازی کنی
+        // فعلاً برای تست، ما پرداخت موفق رو شبیه‌سازی می‌کنیم:
+        $status = "success";
 
-        return DB::transaction(function () use ($order, $request) {
-            // شبیه‌سازی موفقیت پرداخت
-            $payment = PaymentHistory::create([
-                'order_id' => $order->id,
-                'user_id'  => $request->user()->id,
-                'amount'   => $order->final_amount,
-                'method'   => 'online',
-                'status'   => 'success',
-                'transaction_id' => 'TX-'.uniqid(),
-                'paid_at'  => now(),
-            ]);
+        // بعد از شبیه‌سازی پرداخت، کاربر رو می‌فرستیم به result
+        return redirect()->route('payment.result', [
+            'status'   => $status,
+            'order_id' => $order->id
+        ]);
+    }
 
-            $order->update([
-                'status' => 'paid',
-                'paid_at' => now(),
-            ]);
+    /**
+     * نمایش نتیجه پرداخت
+     */
+    public function result($status, $order_id)
+    {
+        $order = Order::findOrFail($order_id);
 
-            if ($order->discount) {
-                $order->discount->increment('times_used');
-            }
-
-            return $order->load('paymentHistory');
-        });
+        // 🔹 مسیر ویو تغییر داده شده به "payment/result.blade.php"
+        return view('payment.result', [
+            'status' => $status,
+            'order'  => $order,
+        ]);
     }
 }

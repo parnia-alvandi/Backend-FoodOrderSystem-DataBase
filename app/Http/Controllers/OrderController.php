@@ -2,114 +2,99 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Order, Menu, Discount, OrderItem};
 use Illuminate\Http\Request;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Menu;
+use App\Models\Discount;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
-    public function store(Request $request) {
-        $data = $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.menu_id' => ['required','integer', Rule::exists('menus','id')],
-            'items.*.quantity' => 'required|integer|min:1',
-            'discount_code' => 'nullable|string'
+    /**
+     * بررسی و نمایش صفحه‌ی checkout
+     */
+    public function checkout(Request $request)
+    {
+        $orderId = $request->input('order_id');
+
+        // اگر سفارش موجود نیست، بساز
+        if (!$orderId) {
+            $order = Order::create([
+                'user_id'     => Auth::id(),
+                'status'      => 'pending',
+                'total_price' => 0,
+            ]);
+        } else {
+            $order = Order::with('items.menu')->findOrFail($orderId);
+        }
+
+        // اگر کاربر کد تخفیف وارد کرده باشد
+        if ($request->filled('discount_code')) {
+            $discount = Discount::where('code', $request->discount_code)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if ($discount) {
+                $order->discount_id = $discount->id;
+                $order->discount_amount = $discount->amount;
+                $order->save();
+
+                return redirect()
+                    ->route('order.checkout', ['order_id' => $order->id])
+                    ->with('success', 'کد تخفیف با موفقیت اعمال شد.');
+            } else {
+                return redirect()
+                    ->back()
+                    ->with('error', 'کد تخفیف معتبر نیست یا منقضی شده است.');
+            }
+        }
+
+        return view('orders.checkout', compact('order'));
+    }
+
+    /**
+     * ثبت سفارش سریع
+     */
+    public function placeOrder(Request $request)
+    {
+        $request->validate([
+            'menu_id'  => 'required|exists:menus,id',
+            'quantity' => 'required|integer|min:1',
         ]);
 
-        $user = $request->user();
-
-        return DB::transaction(function() use ($data, $user) {
+        DB::beginTransaction();
+        try {
+            // ایجاد سفارش جدید
             $order = Order::create([
-                'user_id' => $user->id,
-                'status' => 'pending',
+                'user_id'     => Auth::id(),
+                'status'      => 'pending',
+                'total_price' => 0,
             ]);
 
-            $subtotal = 0;
+            // افزودن آیتم سفارش
+            $menu = Menu::findOrFail($request->menu_id);
 
-            foreach ($data['items'] as $item) {
-                $menu = Menu::find($item['menu_id']);
-                $qty  = $item['quantity'];
-                $line = $menu->price * $qty;
+            OrderItem::create([
+                'order_id' => $order->id,
+                'menu_id'  => $menu->id,
+                'quantity' => $request->quantity,
+                'price'    => $menu->price,
+            ]);
 
-                OrderItem::create([
-                    'order_id'   => $order->id,
-                    'menu_id'    => $menu->id,
-                    'quantity'   => $qty,
-                    'unit_price' => $menu->price,
-                    'line_total' => $line,
-                ]);
-
-                $subtotal += $line;
-            }
-
-            $final = $subtotal;
-            $discount = null;
-
-            if (!empty($data['discount_code'])) {
-                $discount = Discount::where('code', $data['discount_code'])
-                    ->where('active', true)
-                    ->when(true, function($q){
-                        $q->where(function($qq){
-                            $qq->whereNull('expires_at')
-                               ->orWhere('expires_at','>', now());
-                        });
-                    })
-                    ->first();
-
-                if (!$discount) {
-                    abort(422, 'Invalid or expired discount code.');
-                }
-
-                if ($discount->usage_limit && $discount->times_used >= $discount->usage_limit) {
-                    abort(422, 'Discount usage limit reached.');
-                }
-
-                if ($discount->min_order_amount && $subtotal < $discount->min_order_amount) {
-                    abort(422, 'Order total too low for this discount.');
-                }
-
-                if ($discount->type === 'percent') {
-                    $final = max(0, $subtotal - ($subtotal * ($discount->value/100)));
-                } else {
-                    $final = max(0, $subtotal - $discount->value);
-                }
-
-                $order->discount()->associate($discount);
-            }
-
-            $order->total_amount = $subtotal;
-            $order->final_amount = $final;
+            // محاسبه قیمت کل
+            $total = $menu->price * $request->quantity;
+            $order->total_price = $total;
             $order->save();
 
-            return $order->load('menus');
-        });
-    }
+            DB::commit();
 
-    //این قسمت فقط ادمین میتونه وضعیت سفارش رو تغییر بده
-    public function updateStatus(Request $request, Order $order) {
-        if ($request->user()->role !== 'admin') abort(403);
-        $data = $request->validate([
-            'status' => 'required|in:pending,paid,completed,cancelled'
-        ]);
-        $order->update(['status'=>$data['status']]);
-        return $order;
-    }
+            return redirect()->route('order.checkout', ['order_id' => $order->id]);
 
-    public function show(Order $order) {
-        $this->authorizeView($order);
-        return $order->load('menus','paymentHistory','discount');
-    }
-
-    public function myOrders(Request $request) {
-        return Order::where('user_id', $request->user()->id)
-            ->with('menus')
-            ->latest()->paginate(20);
-    }
-
-    private function authorizeView(Order $order) {
-        if (auth()->user()->role !== 'admin' && $order->user_id !== auth()->id()) {
-            abort(403);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'مشکلی در ثبت سفارش رخ داد: ' . $e->getMessage());
         }
     }
 }

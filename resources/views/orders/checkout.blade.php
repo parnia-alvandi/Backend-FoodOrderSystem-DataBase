@@ -1,32 +1,50 @@
 @extends('layouts.app')
 
-@section('content')
-<h2>بررسی سفارش</h2>
+@section('title', 'تأیید سفارش')
 
-@if(count($foods) > 0)
-    <ul>
-        @foreach($foods as $item)
-            <li>{{ $item['name'] }} - {{ $item['price'] }} تومان</li>
+@section('content')
+<div class="container">
+    <h1 class="mb-4">تأیید سفارش</h1>
+
+    {{-- نمایش پیام موفقیت یا خطا --}}
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
+    @endif
+
+    {{-- نمایش لیست غذاهای انتخاب‌شده --}}
+    <h4>غذاهای سفارش‌داده‌شده:</h4>
+    <ul class="list-group mb-3">
+        @foreach($order->items as $item)
+            <li class="list-group-item d-flex justify-content-between">
+                <span>{{ $item->menu->name }} ({{ $item->quantity }} عدد)</span>
+                <strong>{{ number_format($item->menu->price * $item->quantity) }} تومان</strong>
+            </li>
         @endforeach
     </ul>
 
-    <p><strong>جمع کل: {{ $total }} تومان</strong></p>
+    {{-- نمایش مجموع قیمت --}}
+    <p><strong>مبلغ کل:</strong> {{ number_format($order->total_price) }} تومان</p>
 
-    <form method="POST" action="{{ route('order.place') }}">
+    {{-- فرم اعمال تخفیف --}}
+    <form action="{{ route('order.checkout') }}" method="POST" class="mb-3">
         @csrf
+        <input type="hidden" name="order_id" value="{{ $order->id }}">
 
-        @foreach($selectedItems as $id)
-            <input type="hidden" name="items[]" value="{{ $id }}">
-        @endforeach
+        <div class="mb-3">
+            <label for="discount_code" class="form-label">کد تخفیف</label>
+            <input type="text" name="discount_code" id="discount_code" class="form-control"
+                   placeholder="در صورت داشتن کد تخفیف وارد کنید">
+        </div>
 
-        <label>کد تخفیف (اختیاری):</label>
-        <input type="text" name="discount_code" placeholder="مثلاً: SAVE10">
-
-        <br><br>
-        <button type="submit">ثبت نهایی سفارش و پرداخت</button>
+        <button type="submit" class="btn btn-warning">اعمال تخفیف</button>
     </form>
-@else
-    <p>هیچ غذایی انتخاب نشده است.</p>
-    <a href="{{ route('menu.index') }}">بازگشت به منو</a>
-@endif
+
+    {{-- دکمه پرداخت --}}
+    <a href="{{ route('payment.process', $order->id) }}" class="btn btn-success">
+        ادامه به پرداخت
+    </a>
+</div>
 @endsection

@@ -14,6 +14,23 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
+    public function login(Request $request)
+    {
+        $cred = $request->validate([
+            'email' => ['required','email'],
+            'password' => ['required','string','min:6'],
+        ]);
+
+        if (Auth::attempt($cred, $request->boolean('remember'))) {
+            $request->session()->regenerate();
+            // برگرداندن کاربر به صفحهٔ موردنظر (مثل /order/checkout)؛
+            // اگر مقصدی نباشد، به صفحهٔ خانه برود.
+            return redirect()->intended(route('home'));
+        }
+
+        return back()->withErrors(['email' => 'ایمیل یا رمز عبور نادرست است.'])->onlyInput('email');
+    }
+
     public function showRegisterForm()
     {
         return view('auth.register');
@@ -22,35 +39,22 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'name'     => ['required','string','max:255'],
-            'email'    => ['required','email','max:255','unique:users,email'],
-            'password' => ['required','string','min:6','confirmed'],
+            'name' => ['required','string','max:100'],
+            'email' => ['required','email','unique:users,email'],
+            'password' => ['required','confirmed','min:6'],
         ]);
 
         $user = User::create([
-            'name'  => $data['name'],
+            'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make($data['password']), // خیلی مهم
+            'password' => Hash::make($data['password']),
             'role' => 'customer',
         ]);
 
         Auth::login($user);
-        return redirect()->route('home')->with('success', 'ثبت‌نام با موفقیت انجام شد.');
-    }
+        $request->session()->regenerate();
 
-    public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email'    => ['required','email'],
-            'password' => ['required','string'],
-        ]);
-
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-            return redirect()->intended(route('home'));
-        }
-
-        return back()->withErrors(['email' => 'ایمیل یا رمز اشتباه است.'])->onlyInput('email');
+        return redirect()->intended(route('home'));
     }
 
     public function logout(Request $request)
@@ -58,6 +62,8 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('login');
+
+        return redirect()->route('home');
     }
 }
+

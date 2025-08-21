@@ -7,10 +7,12 @@ use Illuminate\Http\Request;
 
 class MenuController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // شمارش‌ها بر اساس ستون‌های موجود (menu_id)
-        $menus = Menu::withCount(['comments','surveys'])->paginate(12);
+        $menus = Menu::query()
+            ->withCount(['comments','surveys'])
+            ->paginate(12);
+
         return view('menu.index', compact('menus'));
     }
 
@@ -19,6 +21,4 @@ class MenuController extends Controller
         $menu->load(['comments.user','surveys.user']);
         return view('menu.show', compact('menu'));
     }
-
-    // متدهای ادمین در گروه admin.resource ثبت می‌شوند (create/store/edit/update/destroy)
 }

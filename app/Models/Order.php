@@ -3,31 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Order extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'user_id','status','discount_id','total_amount','final_amount','paid_at'
+        'user_id','menu_id','quantity','unit_price',
+        'discount_code','discount_amount','total_amount','status'
     ];
 
-    public function user(): BelongsTo {
-        return $this->belongsTo(User::class);
-    }
-
-    public function menus(): BelongsToMany {
-        return $this->belongsToMany(Menu::class, 'order_items')
-            ->withPivot(['quantity','unit_price','line_total'])
-            ->withTimestamps();
-    }
-
-    public function paymentHistory(): HasOne {
-        return $this->hasOne(PaymentHistory::class);
-    }
-
-    public function discount(): BelongsTo {
-        return $this->belongsTo(Discount::class);
-    }
+    public function user() { return $this->belongsTo(User::class); }
+    public function menu() { return $this->belongsTo(Menu::class); }
 }
