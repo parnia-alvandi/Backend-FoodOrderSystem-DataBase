@@ -31,18 +31,24 @@ Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');
 Route::get('/menu/{menu}', [MenuController::class, 'show'])->name('menu.show');
 
 /** -------- Protected (کاربران لاگین) -------- */
+/** -------- Protected (کاربر لاگین) -------- */
 Route::middleware(['auth'])->group(function () {
-    Route::post('/order/checkout', [OrderController::class, 'checkout'])->name('order.checkout');
+    // نمایش صفحه‌ی checkout (GET)
+    Route::get('/order/checkout', [OrderController::class, 'checkout'])->name('order.checkout');
+
+    // ثبت داده‌ها در checkout (POST)
+    Route::post('/order/checkout', [OrderController::class, 'checkout'])->name('order.checkout.post');
+
+    // ثبت سفارش سریع
     Route::post('/order/place', [OrderController::class, 'placeOrder'])->name('order.place');
 
-    /** Payment */
     Route::get('/payment/{order_id}', [PaymentController::class, 'process'])->name('payment.process');
     Route::get('/payment/result/{status}/{order_id}', [PaymentController::class, 'result'])->name('payment.result');
 
-    /** Survey & Comment */
     Route::post('/rate-food/{id}', [SurveyController::class, 'rate'])->name('food.rate');
     Route::post('/comment/{id}', [CommentController::class, 'comment'])->name('food.comment');
 });
+
 
 /** -------- Admin-only (CRUD کامل منو) -------- */
 Route::middleware(['admin'])

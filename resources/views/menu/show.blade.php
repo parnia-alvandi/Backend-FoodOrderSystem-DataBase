@@ -8,10 +8,17 @@
 
     <div class="mb-3">
         @auth
-            <a href="{{ route('order.checkout', ['menu_id' => $menu->id]) }}" class="btn btn-primary">سفارش این آیتم</a>
+            {{-- ✅ فرم سفارش سریع --}}
+            <form action="{{ route('order.place') }}" method="POST" style="display:inline;">
+                @csrf
+                <input type="hidden" name="menu_id" value="{{ $menu->id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn-primary">سفارش سریع</button>
+            </form>
         @else
             <a href="{{ route('login') }}" class="btn btn-primary">سفارش این آیتم</a>
         @endauth
+
         <a href="{{ route('menu.index') }}" class="btn btn-secondary">بازگشت به لیست</a>
     </div>
 
