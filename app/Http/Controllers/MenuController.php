@@ -11,13 +11,13 @@ class MenuController extends Controller
     {
         // شمارش‌ها بر اساس ستون‌های موجود (menu_id)
         $menus = Menu::withCount(['comments','surveys'])->paginate(12);
-        return view('menus.index', compact('menus'));
+        return view('menu.index', compact('menus'));
     }
 
     public function show(Menu $menu)
     {
         $menu->load(['comments.user','surveys.user']);
-        return view('menus.show', compact('menu'));
+        return view('menu.show', compact('menu'));
     }
 
     // متدهای ادمین در گروه admin.resource ثبت می‌شوند (create/store/edit/update/destroy)
